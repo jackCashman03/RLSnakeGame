@@ -5,12 +5,14 @@ from collections import deque
 from game import SnakeGameAI, Direction, Point
 from model import Linear_QNet, QTrainer
 from helper import plot
+import time
 
 MAX_MEMORY = 100_000
 BATCH_SIZE = 1000
 LR = 0.001
-EPSILON = 0
-GAMMA = 0.9
+EPSILON = 0.9
+EPSILON_DECAY = 0.1
+GAMMA = 0.99
 HIDDEN_SIZE = 256
 
 
@@ -75,22 +77,21 @@ class Agent:
 
     def train_long_memory(self):
         if len(self.memory) > BATCH_SIZE:
-            mini_sample = random.sample(self.memory, BATCH_SIZE)  # list of tuples
+            mini_sample = random.sample(self.memory, BATCH_SIZE)
         else:
             mini_sample = self.memory
 
         states, actions, rewards, next_states, dones = zip(*mini_sample)
         self.trainer.train_step(states, actions, rewards, next_states, dones)
-        # for state, action, reward, nexrt_state, done in mini_sample:
-        #    self.trainer.train_step(state, action, reward, next_state, done)
 
     def train_short_memory(self, state, action, reward, next_state, done):
         self.trainer.train_step(state, action, reward, next_state, done)
 
     def get_action(self, state):
-        # random moves: tradeoff exploration / exploitation
+        # Exploration vs Exploitation
         self.epsilon = 80 - self.n_games
         final_move = [0, 0, 0]
+
         if random.randint(0, 200) < self.epsilon:
             move = random.randint(0, 2)
             final_move[move] = 1
@@ -100,6 +101,7 @@ class Agent:
             move = torch.argmax(prediction).item()
             final_move[move] = 1
 
+        self.epsilon = (1 - EPSILON_DECAY) * self.epsilon
         return final_move
 
 
@@ -110,6 +112,8 @@ def train():
     record = 0
     agent = Agent()
     game = SnakeGameAI()
+    start_time = time.time()
+
     while True:
         # get old state
         state_old = agent.get_state(game)
@@ -137,7 +141,15 @@ def train():
                 record = score
                 agent.model.save()
 
-            print('Game', agent.n_games, 'Score', score, 'Record:', record)
+
+            elapsed = time.time() - start_time
+            mins_elapsed = elapsed // 60
+            secs_elapsed = elapsed % 60
+            secs_elapsed = '{:.2f}'.format(secs_elapsed)
+            last10avg = sum(plot_scores[-10:]) / 10
+
+            print(f'Game number: {agent.n_games} | Score: {score} | Record: {record} | Time elapsed: {mins_elapsed}m{secs_elapsed}s')
+            print(f'Last 10 Games Average Score: {last10avg}')
 
             plot_scores.append(score)
             total_score += score
