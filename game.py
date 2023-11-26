@@ -8,6 +8,8 @@ pygame.init()
 font = pygame.font.Font('arial.ttf', 25)
 
 
+# font = pygame.font.SysFont('arial', 25)
+
 class Direction(Enum):
     RIGHT = 1
     LEFT = 2
@@ -28,7 +30,7 @@ BLOCK_SIZE = 20
 SPEED = 40
 
 
-class SnakeGameAgent:
+class SnakeGameAI:
 
     def __init__(self, w=640, h=480):
         self.w = w
@@ -38,7 +40,6 @@ class SnakeGameAgent:
         pygame.display.set_caption('Snake')
         self.clock = pygame.time.Clock()
         self.reset()
-
 
     def reset(self):
         # init game state
@@ -54,7 +55,6 @@ class SnakeGameAgent:
         self._place_food()
         self.frame_iteration = 0
 
-
     def _place_food(self):
         x = random.randint(0, (self.w - BLOCK_SIZE) // BLOCK_SIZE) * BLOCK_SIZE
         y = random.randint(0, (self.h - BLOCK_SIZE) // BLOCK_SIZE) * BLOCK_SIZE
@@ -69,7 +69,6 @@ class SnakeGameAgent:
             if event.type == pygame.QUIT:
                 pygame.quit()
                 quit()
-
 
         # 2. move
         self._move(action)  # update the head
@@ -98,9 +97,8 @@ class SnakeGameAgent:
         return reward, game_over, self.score
 
     def is_collision(self, pt=None):
-        if pt == None:
+        if pt is None:
             pt = self.head
-
         # hits boundary
         if pt.x > self.w - BLOCK_SIZE or pt.x < 0 or pt.y > self.h - BLOCK_SIZE or pt.y < 0:
             return True
@@ -130,16 +128,15 @@ class SnakeGameAgent:
         idx = clock_wise.index(self.direction)
 
         if np.array_equal(action, [1, 0, 0]):
-            new_dir = clock_wise[idx]   # no change
+            new_dir = clock_wise[idx]  # no change
         elif np.array_equal(action, [0, 1, 0]):
             next_idx = (idx + 1) % 4
-            new_dir = clock_wise[next_idx]   # right turn
-        elif np.array_equal(action, [0, 0, 1]):
+            new_dir = clock_wise[next_idx]  # right turn r -> d -> l -> u
+        else:  # [0, 0, 1]
             next_idx = (idx - 1) % 4
-            new_dir = clock_wise[next_idx]  # left turn
+            new_dir = clock_wise[next_idx]  # left turn r -> u -> l -> d
 
         self.direction = new_dir
-
 
         x = self.head.x
         y = self.head.y
